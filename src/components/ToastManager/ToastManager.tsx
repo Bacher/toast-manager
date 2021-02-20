@@ -39,7 +39,7 @@ export function showToast(text: string) {
 
 function applyPositions(state: TState) {
   const {lines} = state;
-  let totalOffset = 0;
+  let totalOffset = 16;
 
   for (let i = lines.length - 1; i >= 0; i--) {
     const toast = lines[i];
@@ -195,7 +195,15 @@ export function ToastManager() {
   applyPositions(state);
 
   return (
-    <div className={styles.wrapper} onMouseEnter={state.pause} onMouseLeave={state.resume}>
+    <div
+      className={styles.wrapper}
+      onMouseEnter={state.pause}
+      onMouseLeave={state.resume}
+      onClick={() => {
+        state.pause();
+        state.resume();
+      }}
+    >
       {state.lines.map((toast) => (
         <div
           key={toast.id}

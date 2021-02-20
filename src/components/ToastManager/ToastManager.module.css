@@ -4,18 +4,26 @@
   bottom: 0;
   width: 0;
   height: 0;
-  z-index: 99999;
+  z-index: 999999;
 }
 
 .toastWrapper {
   position: fixed;
-  bottom: 0;
   left: 0;
-  padding: 0 0 16px 16px;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px 0;
+}
+
+@media (min-width: 500px) {
+  .toastWrapper {
+    right: unset;
+    max-width: 300px;
+    padding: 14px 0 0 16px;
+  }
 }
 
 .toast {
-  max-width: 300px;
   border-radius: 8px;
   padding: 8px 12px;
   background: #fff;

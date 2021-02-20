@@ -1,10 +1,12 @@
-import {useEffect, useMemo, useState} from 'react';
+import {ReactNode, useEffect, useMemo, useState} from 'react';
 
 import styles from './ToastManager.module.css';
 
+type Renderer = string | (() => ReactNode);
+
 type Toast = {
   id: number;
-  text: string;
+  renderer: Renderer;
   height?: number;
   offset?: number;
   hiding?: boolean;
@@ -13,36 +15,36 @@ type Toast = {
 };
 
 type TState = {
-  lines: Toast[];
+  toasts: Toast[];
   paused: boolean;
   pause: () => void;
   resume: () => void;
-  addToast: (t: string) => void;
-  markHide: (t: Toast) => void;
+  addToast: (renderer: Renderer) => void;
+  markHide: (toast: Toast) => void;
   forceUpdate: () => void;
   delayedUpdate: () => void;
   lazyCleanUpToasts: () => void;
   cleanUp: () => void;
 };
 
-const HIDE_TIMEOUT = 3000;
-const queue: string[] = [];
-let instance: {show: (p: string) => void} | undefined;
+const HIDE_TIMEOUT = 4000;
+const queue: Renderer[] = [];
+let instance: {show: (renderer: Renderer) => void} | undefined;
 
-export function showToast(text: string) {
+export function showToast(renderer: Renderer) {
   if (instance) {
-    instance.show(text);
+    instance.show(renderer);
   } else {
-    queue.push(text);
+    queue.push(renderer);
   }
 }
 
 function applyPositions(state: TState) {
-  const {lines} = state;
+  const {toasts} = state;
   let totalOffset = 16;
 
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const toast = lines[i];
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    const toast = toasts[i];
 
     if (!toast.hiding) {
       toast.offset = totalOffset;
@@ -84,12 +86,12 @@ export function ToastManager() {
 
     return {
       paused: false,
-      lines: [],
+      toasts: [],
       pause() {
         state.paused = true;
 
-        for (let i = 0; i < state.lines.length; i++) {
-          const toast = state.lines[i];
+        for (let i = 0; i < state.toasts.length; i++) {
+          const toast = state.toasts[i];
 
           if (toast.hideTimeout) {
             timer.clearTimeout(toast.hideTimeout);
@@ -100,8 +102,8 @@ export function ToastManager() {
       resume() {
         state.paused = false;
 
-        for (let i = 0; i < state.lines.length; i++) {
-          const toast = state.lines[i];
+        for (let i = 0; i < state.toasts.length; i++) {
+          const toast = state.toasts[i];
 
           if (!toast.hiding) {
             toast.hideTimeout = timer.setTimeout(() => {
@@ -110,10 +112,10 @@ export function ToastManager() {
           }
         }
       },
-      addToast(text: string) {
+      addToast(renderer: Renderer) {
         const toast: Toast = {
           id: ++lastId,
-          text,
+          renderer,
         };
 
         if (!state.paused) {
@@ -122,13 +124,13 @@ export function ToastManager() {
           }, HIDE_TIMEOUT);
         }
 
-        state.lines.push(toast);
+        state.toasts.push(toast);
 
-        if (state.lines.length > 3) {
+        if (state.toasts.length > 3) {
           const now = Date.now();
 
-          for (let i = 0; i < state.lines.length - 3; i++) {
-            const toast = state.lines[i];
+          for (let i = 0; i < state.toasts.length - 3; i++) {
+            const toast = state.toasts[i];
             if (!toast.hiding) {
               toast.hiding = true;
               toast.hidingTs = now;
@@ -162,7 +164,7 @@ export function ToastManager() {
       lazyCleanUpToasts() {
         timer.setTimeout(() => {
           const limitTs = Date.now() - 700;
-          state.lines = state.lines.filter((toast) => !toast.hidingTs || toast.hidingTs > limitTs);
+          state.toasts = state.toasts.filter((toast) => !toast.hidingTs || toast.hidingTs > limitTs);
           state.forceUpdate();
         }, 1000);
       },
@@ -194,6 +196,10 @@ export function ToastManager() {
 
   applyPositions(state);
 
+  if (!state.toasts.length) {
+    return null;
+  }
+
   return (
     <div
       className={styles.wrapper}
@@ -204,28 +210,39 @@ export function ToastManager() {
         state.resume();
       }}
     >
-      {state.lines.map((toast) => (
-        <div
-          key={toast.id}
-          ref={(el) => {
-            if (el) {
-              const height = el.offsetHeight;
+      {state.toasts.map((toast) => {
+        const {id, renderer} = toast;
+        let content: ReactNode;
 
-              if (toast.height !== height) {
-                toast.height = height;
-                state.delayedUpdate();
+        if (renderer instanceof Function) {
+          content = renderer();
+        } else {
+          content = <div className={styles.toast}>{renderer}</div>;
+        }
+
+        return (
+          <div
+            key={id}
+            ref={(el) => {
+              if (el) {
+                const height = el.offsetHeight;
+
+                if (toast.height !== height) {
+                  toast.height = height;
+                  state.delayedUpdate();
+                }
               }
-            }
-          }}
-          className={styles.toastWrapper}
-          style={{
-            bottom: toast.offset,
-          }}
-          data-hide={toast.hiding || undefined}
-        >
-          <div className={styles.toast}>{toast.text}</div>
-        </div>
-      ))}
+            }}
+            className={styles.toastWrapper}
+            style={{
+              bottom: toast.offset,
+            }}
+            data-hide={toast.hiding || undefined}
+          >
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
 }

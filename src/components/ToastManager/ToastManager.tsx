@@ -11,7 +11,7 @@ type Toast = {
   offset?: number;
   hiding?: boolean;
   hidingTs?: number;
-  hideTimeout?: number;
+  clearHideTimeout?: () => void;
 };
 
 type TState = {
@@ -27,9 +27,14 @@ type TState = {
   cleanUp: () => void;
 };
 
+type Instance = {
+  show: (renderer: Renderer) => void;
+};
+
 const HIDE_TIMEOUT = 4000;
 const queue: Renderer[] = [];
-let instance: {show: (renderer: Renderer) => void} | undefined;
+
+let instance: Instance | undefined;
 
 export function showToast(renderer: Renderer) {
   if (instance) {
@@ -57,20 +62,21 @@ function createTimerManager() {
   const timers: Set<number> = new Set();
 
   return {
-    setTimeout(callback: () => void, ms: number): number {
+    setTimeout(callback: () => void, ms: number): () => void {
       const timerId = window.setTimeout(() => {
         timers.delete(timerId);
         callback();
       }, ms);
       timers.add(timerId);
-      return timerId;
-    },
-    clearTimeout(timerId: number) {
-      window.clearTimeout(timerId);
-      timers.delete(timerId);
+
+      return () => {
+        window.clearTimeout(timerId);
+        timers.delete(timerId);
+      };
     },
     resetAll() {
       Array.from(timers.values()).forEach(window.clearTimeout);
+      timers.clear();
     },
   };
 }
@@ -93,9 +99,9 @@ export function ToastManager() {
         for (let i = 0; i < state.toasts.length; i++) {
           const toast = state.toasts[i];
 
-          if (toast.hideTimeout) {
-            timer.clearTimeout(toast.hideTimeout);
-            toast.hideTimeout = undefined;
+          if (toast.clearHideTimeout) {
+            toast.clearHideTimeout();
+            toast.clearHideTimeout = undefined;
           }
         }
       },
@@ -106,7 +112,7 @@ export function ToastManager() {
           const toast = state.toasts[i];
 
           if (!toast.hiding) {
-            toast.hideTimeout = timer.setTimeout(() => {
+            toast.clearHideTimeout = timer.setTimeout(() => {
               state.markHide(toast);
             }, HIDE_TIMEOUT + i * 100);
           }
@@ -119,7 +125,7 @@ export function ToastManager() {
         };
 
         if (!state.paused) {
-          toast.hideTimeout = timer.setTimeout(() => {
+          toast.clearHideTimeout = timer.setTimeout(() => {
             state.markHide(toast);
           }, HIDE_TIMEOUT);
         }
@@ -143,7 +149,7 @@ export function ToastManager() {
         state.forceUpdate();
       },
       markHide(toast: Toast) {
-        toast.hideTimeout = undefined;
+        toast.clearHideTimeout = undefined;
         toast.hiding = true;
         toast.hidingTs = Date.now();
         state.forceUpdate();

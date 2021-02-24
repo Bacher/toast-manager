@@ -25,7 +25,7 @@
 
 .toast {
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 12px 16px;
   background: #fff;
   box-shadow: 0 12px 24px rgba(34, 34, 34, 0.2);
 }
@@ -39,26 +39,26 @@
   .toastWrapper[data-hide] {
     animation: hide 0.3s ease-in forwards;
   }
-}
 
-@keyframes appear {
-  from {
-    transform: translate(0, 100px);
-    opacity: 0;
+  @keyframes appear {
+    from {
+      transform: translate(0, 100px);
+      opacity: 0;
+    }
+    to {
+      transform: translate(0, 0);
+      opacity: 1;
+    }
   }
-  to {
-    transform: translate(0, 0);
-    opacity: 1;
-  }
-}
 
-@keyframes hide {
-  from {
-    transform: translate(0, 0);
-    opacity: 1;
-  }
-  to {
-    transform: translate(0, -40px);
-    opacity: 0;
+  @keyframes hide {
+    from {
+      transform: translate(0, 0);
+      opacity: 1;
+    }
+    to {
+      transform: translate(0, -40px);
+      opacity: 0;
+    }
   }
 }
